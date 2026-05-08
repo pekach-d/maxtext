@@ -97,6 +97,13 @@ flags.DEFINE_bool(
     "with values from the MaxText config. If False, raises a ValueError on mismatch.",
 )
 
+flags.DEFINE_string(
+    "tokenizer_id",
+    None,
+    "Optional HuggingFace tokenizer ID to use instead of the default one "
+    "from HF_IDS. Can be a Hub ID (e.g. 'meta-llama/Llama-3-8B') or a local path.",
+)
+
 FLAGS = flags.FLAGS
 
 
@@ -268,10 +275,19 @@ def main(argv: Sequence[str]) -> None:
   _validate_or_update_architecture(hf_config_obj, config, override=FLAGS.override_model_architecture)
 
   # 2. Load Tokenizer
-  if model_key not in HF_IDS:
-    raise ValueError(f"HF Tokenizer ID not found for model key: {model_key}")
   hf_token = config.hf_access_token
-  hf_tokenizer_id = HF_IDS[model_key]
+
+  if FLAGS.tokenizer_id:
+    hf_tokenizer_id = FLAGS.tokenizer_id
+    max_logging.log(f"Using custom tokenizer: {hf_tokenizer_id}")
+  elif model_key in HF_IDS:
+    hf_tokenizer_id = HF_IDS[model_key]
+  else:
+    raise ValueError(
+      f"HF Tokenizer ID not found for model key: {model_key!r}. "
+      f"Either add it to HF_IDS or pass --tokenizer_id=<your/tokenizer>."
+    )
+
   tokenizer = AutoTokenizer.from_pretrained(hf_tokenizer_id, token=hf_token)
 
   # For multi-modal case:
